@@ -6,30 +6,43 @@ Run Claude Code with `--dangerously-skip-permissions` in an isolated smolvm cont
 
 ### Pre-built Binary (Recommended)
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/rohan-mathure/claude-sandbox/releases):
+Download the latest release for your platform from [GitHub Releases](https://github.com/rohan-mathure/claude-sandbox/releases) and add to your PATH:
 
 **macOS:**
 ```bash
-curl -L -o claude-sandbox https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-darwin-arm64
-# For Intel Macs:
-# curl -L -o claude-sandbox https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-darwin-amd64
-chmod +x claude-sandbox
-./claude-sandbox
+# Apple Silicon (M1/M2/M3)
+curl -L https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-darwin-arm64 \
+  -o /usr/local/bin/claude-sandbox && chmod +x /usr/local/bin/claude-sandbox
+
+# Intel Mac
+curl -L https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-darwin-amd64 \
+  -o /usr/local/bin/claude-sandbox && chmod +x /usr/local/bin/claude-sandbox
 ```
 
 **Linux:**
 ```bash
-curl -L -o claude-sandbox https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-linux-amd64
-# For ARM64:
-# curl -L -o claude-sandbox https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-linux-arm64
-chmod +x claude-sandbox
-./claude-sandbox
+# x86_64
+curl -L https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-linux-amd64 \
+  -o ~/.local/bin/claude-sandbox && chmod +x ~/.local/bin/claude-sandbox
+
+# ARM64
+curl -L https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-linux-arm64 \
+  -o ~/.local/bin/claude-sandbox && chmod +x ~/.local/bin/claude-sandbox
+
+# Ensure ~/.local/bin is in PATH
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
 **Windows:**
 ```powershell
-curl -L -o claude-sandbox.exe https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-windows-amd64.exe
-.\claude-sandbox.exe
+# Download to a directory in PATH (e.g., C:\Users\YourName\AppData\Local\Programs\bin)
+curl -L -o "$env:USERPROFILE\AppData\Local\Programs\bin\claude-sandbox.exe" `
+  https://github.com/rohan-mathure/claude-sandbox/releases/download/latest/claude-sandbox-windows-amd64.exe
+```
+
+Then use from anywhere:
+```bash
+claude-sandbox
 ```
 
 ### Build from Source
@@ -40,7 +53,11 @@ Requires [Go 1.21+](https://golang.org/dl/).
 git clone https://github.com/rohan-mathure/claude-sandbox.git
 cd claude-sandbox
 go build -o claude-sandbox .
-./claude-sandbox
+
+# Add to PATH
+sudo mv claude-sandbox /usr/local/bin/  # macOS/Linux
+# or
+move-item claude-sandbox $env:USERPROFILE\AppData\Local\Programs\bin\  # Windows
 ```
 
 ## Prerequisites
@@ -54,23 +71,25 @@ curl -sSL https://smolmachines.com/install.sh | bash
 ## Usage
 
 ```bash
-./claude-sandbox                                 # node:lts image, current directory
-./claude-sandbox -image ubuntu:22.04             # custom image
-./claude-sandbox -repo /path/to/other/project   # external repo
+claude-sandbox                                   # node:lts image, current directory
+claude-sandbox -image ubuntu:22.04               # custom image
+claude-sandbox -repo /path/to/other/project     # external repo
 ```
 
 Launches smolvm VM, mounts repo at `/workspace`, installs claude-code, runs with permissions skipped. Exit with `Ctrl+D` or `exit`.
 
 ## How It Works
 
-1. **Makefile** — entry point with two optional vars:
-   - `IMAGE` (default: `node:lts`) — OCI image to run
-   - `REPO` (default: current dir) — repo path to mount at `/workspace`
+1. **claude-sandbox binary** — Go wrapper with embedded scripts:
+   - Accepts `-image` flag (default: `node:lts`) for OCI image
+   - Accepts `-repo` flag (default: current dir) to mount at `/workspace`
+   - Extracts scripts to temp directory
+   - Executes `smolvm machine run` with proper mounts and entrypoint
 
 2. **scripts/entrypoint.sh** — runs inside VM:
    - Auto-installs Node.js if missing (debian-based images only)
    - Installs `@anthropic-ai/claude-code` globally
-   - Starts claude with `--dangerously-skip-permissions`
+   - Runs Claude as non-root user with `--dangerously-skip-permissions`
 
 3. **API Key** — provide via env inside VM or when claude prompts (no passthrough needed)
 
@@ -78,13 +97,16 @@ Launches smolvm VM, mounts repo at `/workspace`, installs claude-code, runs with
 
 ```bash
 # Default: isolated Claude Code against current repo
-make sandbox
+claude-sandbox
 
 # Use Alpine Linux
-make sandbox IMAGE=alpine
+claude-sandbox -image alpine:latest
 
 # Analyze external project without trusting your machine
-cd /tmp && make -f ~/Projects/claude-sandbox/Makefile sandbox REPO=/path/to/untrusted/code
+claude-sandbox -repo /path/to/untrusted/code
+
+# Use custom Node image
+claude-sandbox -image node:18
 ```
 
 ## Release Process
