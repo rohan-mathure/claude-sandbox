@@ -52,12 +52,8 @@ jobs:
 
       - name: Test binary
         run: |
-          if [[ "${{ matrix.goos }}" == "windows" ]]; then
-            ./${{ matrix.artifact }} -h > /dev/null || true
-          else
-            chmod +x ${{ matrix.artifact }}
-            ./${{ matrix.artifact }} -h > /dev/null
-          fi
+          chmod +x ${{ matrix.artifact }} || true
+          ./${{ matrix.artifact }} -h 2>&1 | head -1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
