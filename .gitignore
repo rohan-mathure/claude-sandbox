@@ -1,0 +1,14 @@
+# Build artifacts
+claude-sandbox
+claude-sandbox.exe
+*.exe
+
+# Go
+/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
